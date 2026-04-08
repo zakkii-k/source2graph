@@ -1,10 +1,11 @@
+# GitNexus (separate project, not tracked here)
+GitNexus/
+
 # Dependencies
 source2graph/node_modules/
-GitNexus/node_modules/
 
 # Build output
 source2graph/dist/
-GitNexus/dist/
 source2graph/build/
 
 # Cache
