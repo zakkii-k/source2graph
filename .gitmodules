@@ -1,0 +1,3 @@
+[submodule "llm-rag-trial"]
+	path = llm-rag-trial
+	url = git@github.com:zakkii-k/llm-rag-trial.git
