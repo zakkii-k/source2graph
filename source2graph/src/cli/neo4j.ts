@@ -9,7 +9,7 @@ import {
 
 const DEFAULT_URI = 'bolt://localhost:7687'
 const DEFAULT_USER = 'neo4j'
-const DEFAULT_PASS = 's2gpass'
+const DEFAULT_PASS = 's2gpassword'
 
 export function registerNeo4jCommands(program: Command): void {
 

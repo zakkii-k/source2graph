@@ -318,8 +318,9 @@ export const scalaProvider: LanguageProvider = {
     const { filePath, tree, graph, symbolTable } = ctx
 
     for (const match of q(SCALA_CALL_QUERY, tree.rootNode)) {
-      const callNode = match.captures.find((c) => c.name === 'directCall' || c.name === 'memberCall')?.node
-      const calleeNode = match.captures.find((c) => c.name === 'callee' || c.name === 'methodName')?.node
+      const isZeroArg = match.captures.some((c) => c.name === 'zeroArgCall')
+      const callNode = match.captures.find((c) => c.name === 'directCall' || c.name === 'memberCall' || c.name === 'zeroArgCall')?.node
+      const calleeNode = match.captures.find((c) => c.name === 'callee' || c.name === 'methodName' || c.name === 'zeroArgMethod')?.node
       if (!callNode || !calleeNode) continue
 
       const callLine = callNode.startPosition.row + 1
@@ -330,6 +331,8 @@ export const scalaProvider: LanguageProvider = {
       const calleeCandidates = symbolTable.lookupByName(calleeNode.text)
       for (const callee of calleeCandidates) {
         if (callee.nodeId === callerSym.nodeId) continue
+        // Zero-arg calls (field_expression) could be property access — only match Methods/Functions
+        if (isZeroArg && callee.label !== NodeLabel.Method && callee.label !== NodeLabel.Function) continue
         const confidence = callee.filePath === filePath ? 0.9 : 0.7
 
         graph.addRelationship({

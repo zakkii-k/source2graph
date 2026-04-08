@@ -421,4 +421,8 @@ export const SCALA_CALL_QUERY = `
     field: (identifier) @methodName
   )
 ) @memberCall
+
+(field_expression
+  field: (identifier) @zeroArgMethod
+) @zeroArgCall
 `
