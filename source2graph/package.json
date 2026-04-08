@@ -1,10 +1,11 @@
 {
-  "name": "codenexus",
+  "name": "source2graph",
   "version": "0.1.0",
-  "description": "Source code graph analyzer for Java, TypeScript, and JavaScript",
+  "description": "Source code graph analyzer for Java, TypeScript, JavaScript, and Scala",
   "type": "module",
   "bin": {
-    "codenexus": "./dist/cli/index.js"
+    "s2g": "./dist/cli/index.js",
+    "source2graph": "./dist/cli/index.js"
   },
   "scripts": {
     "build": "tsc",
