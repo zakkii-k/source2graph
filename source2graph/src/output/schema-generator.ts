@@ -2,7 +2,7 @@ import { writeFileSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import { NodeLabel } from '../shared/graph-types.js'
 
-const SCHEMA_CYPHER = `// CodeNexus — Schema: Constraints and Indexes
+const SCHEMA_CYPHER = `// source2graph — Schema: Constraints and Indexes
 // Run this file before importing nodes and relationships.
 
 // ── Uniqueness constraints (one per node label) ──────────────────────────────

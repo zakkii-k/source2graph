@@ -7,7 +7,7 @@ import { registerNeo4jCommands } from './neo4j.js'
 const program = new Command()
 
 program
-  .name('codenexus')
+  .name('s2g')
   .description('Source code graph analyzer — outputs Neo4j-compatible CSV and Cypher files')
   .version('0.1.0')
 

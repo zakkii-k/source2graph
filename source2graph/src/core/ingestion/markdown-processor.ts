@@ -33,23 +33,23 @@ function extractFrontmatter(source: string): string | undefined {
 function parseDescribes(yaml: string): string[] {
   // Find the s2g: block
   const lines = yaml.split('\n')
-  let inCodenexus = false
+  let inS2gBlock = false
   let inDescribes = false
   const results: string[] = []
 
   for (const line of lines) {
     // Detect `s2g:` at root indent
     if (/^s2g\s*:/.test(line)) {
-      inCodenexus = true
+      inS2gBlock = true
       inDescribes = false
       continue
     }
 
-    if (!inCodenexus) continue
+    if (!inS2gBlock) continue
 
     // Any line that isn't indented ends the s2g block
     if (/^\S/.test(line)) {
-      inCodenexus = false
+      inS2gBlock = false
       inDescribes = false
       continue
     }

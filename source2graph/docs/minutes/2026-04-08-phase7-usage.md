@@ -15,17 +15,17 @@ Phase 5〜6完了後、以下を実装・整備した。
 | `docker-compose.yml` | Neo4j 5.20-community、APOC、ヘルスチェック、永続ボリューム |
 | `src/neo4j/neo4j-importer.ts` | `Neo4jImporter`クラス — `neo4j-driver`でBOLT接続、バッチMERGE（200件/バッチ）、スキーマ（CONSTRAINT）自動適用 |
 | `src/neo4j/docker-manager.ts` | `startNeo4j` / `stopNeo4j` / `destroyNeo4j` / `getStatus` / `waitForNeo4j` / `openBrowser` |
-| `src/cli/neo4j.ts` | `codenexus neo4j` サブコマンド群 |
+| `src/cli/neo4j.ts` | `s2g neo4j` サブコマンド群 |
 
 ### コマンド一覧
 
 ```
-codenexus neo4j up [--open]
-codenexus neo4j down
-codenexus neo4j destroy
-codenexus neo4j status
-codenexus neo4j open
-codenexus neo4j import <path> [--uri] [-u] [-p] [--database] [--clear] [--start] [--open] [--verbose]
+s2g neo4j up [--open]
+s2g neo4j down
+s2g neo4j destroy
+s2g neo4j status
+s2g neo4j open
+s2g neo4j import <path> [--uri] [-u] [-p] [--database] [--clear] [--start] [--open] [--verbose]
 ```
 
 ### バグ修正
@@ -71,7 +71,7 @@ codenexus neo4j import <path> [--uri] [-u] [-p] [--database] [--clear] [--start]
 
 **Approach C** — YAMLフロントマター → DOCUMENTS:
 - `---...---` ブロックを手動パース（依存ライブラリ追加なし）
-- `codenexus.describes: SymbolName` または `- SymbolName` リスト形式に対応
+- `s2g.describes: SymbolName` または `- SymbolName` リスト形式に対応
 - `SymbolTable.lookupByName()` でシンボルを解決 → DOCUMENTSリレーション追加
 
 **Section ノード**:

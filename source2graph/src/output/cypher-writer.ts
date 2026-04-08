@@ -154,8 +154,8 @@ export async function writeCypher(graph: KnowledgeGraph, outputDir: string): Pro
   const nodesStream = createWriteStream(nodesFile, { encoding: 'utf-8' })
   const relsStream = createWriteStream(relsFile, { encoding: 'utf-8' })
 
-  nodesStream.write('// CodeNexus — Node MERGE statements\n// Run this file first, then cypher_rels.txt\n\n')
-  relsStream.write('// CodeNexus — Relationship MERGE statements\n// Run AFTER cypher_nodes.txt\n\n')
+  nodesStream.write('// source2graph — Node MERGE statements\n// Run this file first, then cypher_rels.txt\n\n')
+  relsStream.write('// source2graph — Relationship MERGE statements\n// Run AFTER cypher_nodes.txt\n\n')
 
   // Write nodes in batches grouped by label
   const nodesByLabel = new Map<string, GraphNode[]>()

@@ -28,7 +28,7 @@ export interface ContainerStatus {
 
 export function getStatus(): ContainerStatus {
   const r = dockerCompose(['ps', '--format', 'json'])
-  const running = r.ok && r.output.includes('"codenexus-neo4j"') && r.output.includes('"running"')
+  const running = r.ok && r.output.includes('"s2g-neo4j"') && r.output.includes('"running"')
   const healthy = running && r.output.includes('"healthy"')
   return {
     running,
