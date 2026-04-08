@@ -26,6 +26,8 @@
 |---|---|
 | [仕様書と実装リポジトリが分離しているとき](./guides/separate-docs-repo.md) | 別リポジトリの Markdown を解析対象に含める方法（共通親ディレクトリ・シンボリックリンク・submodule） |
 | [Claude Code で使う（詳細）](./guides/claude-code-mcp.md) | MCP 接続の設定・確認・実際のプロンプト例・トラブルシューティング |
+| [ローカルLLM（Ollama）で使う](./guides/local-llm-mcp.md) | llm-rag-trial 経由で Ollama から source2graph MCP を利用する方法 |
+| [Neo4jバックエンド（大規模リポジトリ向け）](./guides/neo4j-backend.md) | エッジ数が閾値を超えた際に自動でNeo4jへ切り替える設定と仕組み |
 
 ---
 
@@ -215,9 +217,14 @@ s2g serve [options]
 |---|---|---|
 | `--repo <path>` | — | 初回起動時に解析するリポジトリパス（複数回指定可） |
 | `--cache-dir <dir>` | `~/.s2g/cache` | graph.json キャッシュの保存先 |
+| `--neo4j-uri <uri>` | — | 指定するとエッジ数が閾値を超えた際に自動でNeo4jへ切り替え |
+| `--neo4j-user <user>` | `neo4j` | Neo4j ユーザー名 |
+| `--neo4j-password <pass>` | `s2gpassword` | Neo4j パスワード |
+| `--neo4j-database <db>` | `neo4j` | Neo4j データベース名 |
+| `--neo4j-threshold <n>` | `50000` | この値を超えるエッジ数でNeo4jバックエンドへ切り替える |
 
 ```bash
-# 単一リポジトリを解析しながらMCPサーバー起動
+# 単一リポジトリを解析しながらMCPサーバー起動（インメモリ）
 s2g serve --repo ./my-project
 
 # 複数リポジトリを横断解析してMCPサーバー起動
@@ -225,7 +232,17 @@ s2g serve --repo ./frontend --repo ./backend --repo ./shared
 
 # キャッシュ済みのグラフを読み込んで起動
 s2g serve --cache-dir /path/to/cache
+
+# 大規模リポジトリ：エッジ数が 50,000 超でNeo4jに自動切り替え
+s2g serve --repo ./large-project --neo4j-uri bolt://localhost:7687
+
+# 閾値を下げて常にNeo4jを使う（--neo4j-threshold 0）
+s2g serve --repo ./my-project --neo4j-uri bolt://localhost:7687 --neo4j-threshold 0
 ```
+
+**バックエンド自動選択の仕組み:**
+
+`--neo4j-uri` を指定した場合のみ自動切り替えが有効になります。Neo4jが起動していない場合はインメモリにフォールバックします。詳細は [Neo4jバックエンドガイド](./guides/neo4j-backend.md) を参照してください。
 
 ---
 
