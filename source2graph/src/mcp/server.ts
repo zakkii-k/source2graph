@@ -1,24 +1,42 @@
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
-import { GraphStore } from './graph-store.js'
+import { GraphStore, DEFAULT_NEO4J_THRESHOLD, type Neo4jConfig } from './graph-store.js'
 import { buildTools } from './tools.js'
 import { buildResources } from './resources.js'
 import { NodeLabel } from '../shared/graph-types.js'
 
-export async function startMcpServer(cacheDir: string, initialRepoPaths?: string[]): Promise<void> {
-  const store = new GraphStore(cacheDir)
+export interface ServeOptions {
+  neo4jConfig?: Neo4jConfig
+  neo4jThreshold?: number
+}
+
+export async function startMcpServer(
+  cacheDir: string,
+  initialRepoPaths?: string[],
+  options: ServeOptions = {},
+): Promise<void> {
+  const store = new GraphStore(cacheDir, options.neo4jConfig, options.neo4jThreshold ?? DEFAULT_NEO4J_THRESHOLD)
 
   // Try to restore from cache on startup
   if (store.loadFromDisk()) {
+    // If Neo4j config was provided, check whether the cached graph exceeds the
+    // threshold and switch backends if so (e.g. after a server restart).
+    if (options.neo4jConfig) {
+      await store.selectBackend()
+    }
     const state = store.getState()!
-    process.stderr.write(`[s2g] Loaded graph from cache: ${state.nodeCount} nodes, ${state.relationshipCount} rels\n`)
+    process.stderr.write(
+      `[s2g] Loaded graph from cache: ${state.nodeCount} nodes, ${state.relationshipCount} rels (backend: ${state.backend})\n`,
+    )
     process.stderr.write(`[s2g] Analyzed at: ${state.analyzedAt}\n`)
   } else if (initialRepoPaths && initialRepoPaths.length > 0) {
     process.stderr.write(`[s2g] Analyzing ${initialRepoPaths.join(', ')}...\n`)
     await store.analyze(initialRepoPaths)
     const state = store.getState()!
-    process.stderr.write(`[s2g] Done: ${state.nodeCount} nodes, ${state.relationshipCount} rels\n`)
+    process.stderr.write(
+      `[s2g] Done: ${state.nodeCount} nodes, ${state.relationshipCount} rels (backend: ${state.backend})\n`,
+    )
   } else {
     process.stderr.write('[s2g] No cached graph found. Use the analyze tool to index a repository.\n')
   }
@@ -52,8 +70,8 @@ export async function startMcpServer(cacheDir: string, initialRepoPaths?: string
       filePath: z.string().optional().describe('Substring to match against file paths'),
       limit: z.number().int().min(1).max(200).optional().describe('Max results (default 50)'),
     },
-    ({ label, namePattern, filePath, limit }) => ({
-      content: [{ type: 'text', text: tools.query_nodes({ label, namePattern, filePath, limit }) }],
+    async ({ label, namePattern, filePath, limit }) => ({
+      content: [{ type: 'text', text: await tools.query_nodes({ label, namePattern, filePath, limit }) }],
     }),
   )
 
@@ -64,8 +82,8 @@ export async function startMcpServer(cacheDir: string, initialRepoPaths?: string
       symbolName: z.string().describe('Name of the method or function'),
       depth: z.number().int().min(1).max(5).optional().describe('How many hops to traverse (default 1)'),
     },
-    ({ symbolName, depth }) => ({
-      content: [{ type: 'text', text: tools.get_callers({ symbolName, depth }) }],
+    async ({ symbolName, depth }) => ({
+      content: [{ type: 'text', text: await tools.get_callers({ symbolName, depth }) }],
     }),
   )
 
@@ -76,8 +94,8 @@ export async function startMcpServer(cacheDir: string, initialRepoPaths?: string
       symbolName: z.string().describe('Name of the method or function'),
       depth: z.number().int().min(1).max(5).optional().describe('How many hops to traverse (default 1)'),
     },
-    ({ symbolName, depth }) => ({
-      content: [{ type: 'text', text: tools.get_callees({ symbolName, depth }) }],
+    async ({ symbolName, depth }) => ({
+      content: [{ type: 'text', text: await tools.get_callees({ symbolName, depth }) }],
     }),
   )
 
@@ -85,8 +103,8 @@ export async function startMcpServer(cacheDir: string, initialRepoPaths?: string
     'get_context',
     'Get a 360-degree view of a symbol: container, methods, fields, extends, implements, callers, callees',
     { symbolName: z.string().describe('Exact name of the class, method, or function') },
-    ({ symbolName }) => ({
-      content: [{ type: 'text', text: tools.get_context({ symbolName }) }],
+    async ({ symbolName }) => ({
+      content: [{ type: 'text', text: await tools.get_context({ symbolName }) }],
     }),
   )
 
