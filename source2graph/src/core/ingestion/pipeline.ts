@@ -111,7 +111,12 @@ export async function runPipeline(
       if (verbose) console.log(`        ✓ ${file.relativePath}`)
     } catch (err) {
       skipped++
-      if (verbose) console.warn(`        ✗ ${file.relativePath}: ${err}`)
+      if (verbose) {
+        const { statSync } = await import('fs')
+        const bytes = statSync(file.absolutePath).size
+        console.warn(`        ✗ ${file.relativePath} (${(bytes / 1024).toFixed(1)} KB): ${err}`)
+        if (err instanceof Error && err.stack) console.warn(err.stack)
+      }
     }
     bar?.increment()
   }
