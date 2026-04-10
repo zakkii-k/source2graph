@@ -1,4 +1,5 @@
 import type { GraphStore } from './graph-store.js'
+import { NodeLabel, RelationshipType } from '../shared/graph-types.js'
 import type { GraphNode } from '../shared/graph-types.js'
 
 function nodeToJson(node: GraphNode) {
