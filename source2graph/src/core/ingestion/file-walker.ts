@@ -140,6 +140,49 @@ export async function walkMarkdownFilesMulti(repos: RepoTarget[]): Promise<Walke
   return results
 }
 
+/** Walk MyBatis mapper XML files (*Mapper.xml) in a repo root. */
+export async function walkXmlFiles(repoRoot: string): Promise<WalkedFile[]> {
+  const gitIgnore = loadIgnoreFile(repoRoot, '.gitignore')
+  const customIgnore = loadIgnoreFile(repoRoot, '.s2gignore')
+
+  const allFiles = await fg('**/*Mapper.xml', {
+    cwd: repoRoot,
+    onlyFiles: true,
+    dot: false,
+    ignore: DEFAULT_IGNORE_PATTERNS,
+  })
+
+  return allFiles
+    .filter((p) => !gitIgnore.ignores(p) && !customIgnore.ignores(p))
+    .map((relativePath) => ({
+      absolutePath: join(repoRoot, relativePath),
+      relativePath,
+      extension: '.xml',
+    }))
+}
+
+/** 複数リポジトリを走査して MyBatis Mapper XML ファイルを返す。 */
+export async function walkXmlFilesMulti(repos: RepoTarget[]): Promise<WalkedFile[]> {
+  const usePrefix = repos.length > 1
+  const results: WalkedFile[] = []
+
+  for (const repo of repos) {
+    const prefix = usePrefix
+      ? (repo.prefix ?? repo.root.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? 'repo')
+      : ''
+    const walked = await walkXmlFiles(repo.root)
+    for (const f of walked) {
+      results.push({
+        absolutePath: f.absolutePath,
+        relativePath: prefix ? `${prefix}/${f.relativePath}` : f.relativePath,
+        extension: f.extension,
+      })
+    }
+  }
+
+  return results
+}
+
 /** Walk markdown files in a repo root, respecting .gitignore and .s2gignore. */
 export async function walkMarkdownFiles(repoRoot: string): Promise<WalkedFile[]> {
   const gitIgnore = loadIgnoreFile(repoRoot, '.gitignore')
