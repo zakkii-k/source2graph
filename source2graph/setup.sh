@@ -94,14 +94,28 @@ fi
 nvm use "$NODE_TARGET"
 info "使用する Node: $(node --version)  npm: $(npm --version)"
 
-### ── Step 4: npm install --build-from-source ───────────────────
-# --build-from-source を付けることで prebuild-install がプレビルドバイナリを
-# ダウンロードせず、ローカルの gcc でコンパイルする。
-# → CentOS 8 の古い libstdc++ (GLIBCXX_3.4.25) でも動作する。
-info "npm install を実行します（ソースからコンパイルするため数分かかります）..."
+### ── Step 4: npm install + プレビルドバイナリ除去 + rebuild ────
+# tree-sitter 系パッケージは npm パッケージ内に prebuilds/*.node を同梱しており、
+# node-gyp-build がランタイムにそれを優先ロードする。
+# CentOS 8 の libstdc++ は最大 GLIBCXX_3.4.25 だが、同梱バイナリは
+# GLIBCXX_3.4.29 (GCC 11+) 必須のため ERR_DLOPEN_FAILED が発生する。
+#
+# 対策: npm install 後にプレビルドバイナリを削除し、npm rebuild で
+# ローカルの gcc を使って再コンパイルさせる。
+info "npm install を実行します..."
 cd "$SCRIPT_DIR"
-npm install --build-from-source
+npm install
 info "npm install 完了。"
+
+info "プレビルドバイナリを除去してローカルコンパイルに切り替えます..."
+# prebuilds/ 内の .node ファイルを削除（node-gyp-build は build/Release/ を優先するため）
+find "$SCRIPT_DIR/node_modules" \
+  -path "*/prebuilds/*.node" \
+  -delete 2>/dev/null || true
+
+info "ネイティブアドオンをソースからコンパイルします（数分かかります）..."
+npm rebuild
+info "リビルド完了。"
 
 ### ── Step 5: npm run build ──────────────────────────────────────
 info "TypeScript をビルドします..."
