@@ -42,7 +42,15 @@ export function getTsxParser(): Parser {
 
 export { tsx as tsxLanguage }
 
+const TREE_SITTER_MIN_BUFFER = 512 * 1024       //  512 KB (tree-sitter default)
+const TREE_SITTER_MAX_BUFFER = 32 * 1024 * 1024 //   32 MB
+
+/** Compute parse buffer size: at least 2× the source length, clamped to [512KB, 32MB]. */
+function bufferSize(sourceLength: number): number {
+  return Math.min(Math.max(sourceLength * 2, TREE_SITTER_MIN_BUFFER), TREE_SITTER_MAX_BUFFER)
+}
+
 export function parseSource(source: string, language: TreeSitterLanguageName | undefined): Parser.Tree {
   if (!language) throw new Error('language is required')
-  return getParser(language).parse(source)
+  return getParser(language).parse(source, undefined, { bufferSize: bufferSize(source.length) })
 }
