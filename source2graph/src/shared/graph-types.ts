@@ -9,6 +9,8 @@ export const NodeLabel = {
   Field: 'Field',
   Section: 'Section',
   Package: 'Package',
+  Table: 'Table',
+  SqlStatement: 'SqlStatement',
 } as const
 
 export type NodeLabel = (typeof NodeLabel)[keyof typeof NodeLabel]
@@ -24,6 +26,13 @@ export const RelationshipType = {
   IMPORTS: 'IMPORTS',
   REFERENCES: 'REFERENCES',
   DOCUMENTS: 'DOCUMENTS',
+  // MyBatis / CRUD
+  MAPPED_TO: 'MAPPED_TO',       // Java Mapper method → SqlStatement
+  CRUD_CREATES: 'CRUD_CREATES', // SqlStatement → Table
+  CRUD_READS: 'CRUD_READS',     // SqlStatement → Table
+  CRUD_UPDATES: 'CRUD_UPDATES', // SqlStatement → Table
+  CRUD_DELETES: 'CRUD_DELETES', // SqlStatement → Table
+  FILTERS_BY: 'FILTERS_BY',    // SqlStatement → Table (WHERE columns)
 } as const
 
 export type RelationshipType = (typeof RelationshipType)[keyof typeof RelationshipType]
@@ -75,6 +84,10 @@ export interface MethodNodeProperties extends BaseNodeProperties {
   returnType: string
   paramCount: number
   language: string
+  // MyBatis: set when the method belongs to a *Mapper / *Dao interface
+  isMybatisMapper?: boolean
+  isMybatisGenerated?: boolean
+  crudOperation?: 'C' | 'R' | 'U' | 'D'
 }
 
 export interface FunctionNodeProperties extends BaseNodeProperties {
@@ -109,6 +122,27 @@ export interface PackageNodeProperties extends BaseNodeProperties {
   packageName: string
 }
 
+export interface TableNodeProperties extends BaseNodeProperties {
+  /** Lowercase table name as it appears in SQL */
+  tableName: string
+}
+
+export interface SqlStatementNodeProperties extends BaseNodeProperties {
+  /** The id attribute from the XML element (= Java method name) */
+  statementId: string
+  /** C | R | U | D */
+  operation: 'C' | 'R' | 'U' | 'D'
+  /** mapper namespace attribute (Java interface FQN) */
+  mapperNamespace: string
+  filePath: string
+  /** Raw SQL text (trimmed, first 500 chars) */
+  sql: string
+  /** true if the statement id matches known MyBatis Generator patterns */
+  isMybatisGenerated: boolean
+  /** Comma-separated column names found in WHERE clause */
+  whereColumns: string
+}
+
 export type NodeProperties =
   | FileNodeProperties
   | FolderNodeProperties
@@ -119,6 +153,8 @@ export type NodeProperties =
   | FieldNodeProperties
   | SectionNodeProperties
   | PackageNodeProperties
+  | TableNodeProperties
+  | SqlStatementNodeProperties
 
 export interface GraphNode {
   label: NodeLabel

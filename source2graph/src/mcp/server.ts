@@ -90,6 +90,37 @@ export async function startMcpServer(cacheDir: string, initialRepoPaths?: string
     }),
   )
 
+  server.tool(
+    'get_crud_matrix',
+    'Return a CRUD matrix showing which MyBatis mapper methods access which tables and with what operations (C/R/U/D)',
+    {
+      mapperName: z.string().optional().describe('Filter by mapper interface name (e.g. "UserMapper"). Omit for all mappers.'),
+    },
+    ({ mapperName }) => ({
+      content: [{ type: 'text', text: tools.get_crud_matrix({ mapperName }) }],
+    }),
+  )
+
+  server.tool(
+    'find_unused_mapper_methods',
+    'Find MyBatis Generator auto-generated mapper methods that are never called anywhere in the codebase',
+    {},
+    () => ({
+      content: [{ type: 'text', text: tools.find_unused_mapper_methods({} as never) }],
+    }),
+  )
+
+  server.tool(
+    'get_index_candidates',
+    'Return database column index candidates based on WHERE clause usage frequency in MyBatis SQL statements',
+    {
+      tableName: z.string().optional().describe('Filter by table name substring. Omit for all tables.'),
+    },
+    ({ tableName }) => ({
+      content: [{ type: 'text', text: tools.get_index_candidates({ tableName }) }],
+    }),
+  )
+
   // ── Resources ──────────────────────────────────────────────────────────────
 
   server.resource(

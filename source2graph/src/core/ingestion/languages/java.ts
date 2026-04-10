@@ -78,6 +78,33 @@ function pickCandidate(
   return candidates[0]
 }
 
+/** True if the class/interface name looks like a MyBatis Mapper. */
+function isMapperName(name: string, modifiersText: string): boolean {
+  return /[Mm]apper$|[Dd]ao$/.test(name) || modifiersText.includes('@Mapper')
+}
+
+/** MyBatis Generator の既知メソッド名セット */
+const MBG_METHODS = new Set([
+  'insert', 'insertSelective',
+  'selectByPrimaryKey', 'selectByExample', 'selectAll', 'selectByExampleWithRowbounds',
+  'countByExample',
+  'updateByPrimaryKey', 'updateByPrimaryKeySelective',
+  'updateByExample', 'updateByExampleSelective',
+  'deleteByPrimaryKey', 'deleteByExample',
+])
+
+/**
+ * Mapper インターフェースのメソッド名から CRUD 操作を分類する。
+ * MBG 生成メソッドだけでなく、カスタムメソッドも名前パターンで分類する。
+ */
+function classifyMapperMethod(methodName: string): 'C' | 'R' | 'U' | 'D' | null {
+  if (/^insert/i.test(methodName) || /^create/i.test(methodName) || /^add/i.test(methodName) || /^save/i.test(methodName)) return 'C'
+  if (/^select/i.test(methodName) || /^find/i.test(methodName) || /^get/i.test(methodName) || /^list/i.test(methodName) || /^query/i.test(methodName) || /^count/i.test(methodName) || /^search/i.test(methodName) || /^fetch/i.test(methodName)) return 'R'
+  if (/^update/i.test(methodName) || /^modify/i.test(methodName) || /^edit/i.test(methodName)) return 'U'
+  if (/^delete/i.test(methodName) || /^remove/i.test(methodName)) return 'D'
+  return null
+}
+
 export const javaProvider: LanguageProvider = {
   language: 'java',
   extensions: ['.java'],
@@ -267,6 +294,7 @@ export const javaProvider: LanguageProvider = {
       })
 
       // Methods inside interface
+      const isMapper = isMapperName(name, modifiersNode?.text ?? '')
       const methodMatches = q(JAVA_METHOD_QUERY, ifaceNode)
       for (const mm of methodMatches) {
         const methodNode = mm.captures.find((c) => c.name === 'method')?.node
@@ -279,6 +307,7 @@ export const javaProvider: LanguageProvider = {
         const paramCount = mParams ? mParams.namedChildren.length : 0
         const mQualified = `${qualifiedName}.${mName.text}`
         const mNodeId = `Method:${filePath}:${mQualified}#${paramCount}`
+        const crudOp = isMapper ? classifyMapperMethod(mName.text) : null
 
         graph.addNode({
           label: NodeLabel.Method,
@@ -295,6 +324,11 @@ export const javaProvider: LanguageProvider = {
             returnType: mReturn?.text ?? '',
             paramCount,
             language: 'java',
+            ...(isMapper && {
+              isMybatisMapper: true,
+              isMybatisGenerated: MBG_METHODS.has(mName.text),
+              ...(crudOp && { crudOperation: crudOp }),
+            }),
           },
         })
 
