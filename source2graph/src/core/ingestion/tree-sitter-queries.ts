@@ -90,6 +90,11 @@ export const JAVA_INTERFACE_EXTENDS_QUERY = `
 ) @interface
 `
 
+/** Captures all type references (for implicit same-package import detection). */
+export const JAVA_TYPE_REF_QUERY = `
+(type_identifier) @typeName
+`
+
 /** Captures method invocations (for call graph). */
 export const JAVA_CALL_QUERY = `
 (method_invocation
