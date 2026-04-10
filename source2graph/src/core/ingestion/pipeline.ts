@@ -3,7 +3,7 @@ import { basename, resolve } from 'path'
 import cliProgress from 'cli-progress'
 import type { KnowledgeGraph } from '../../shared/graph-types.js'
 import { createKnowledgeGraph } from '../graph/knowledge-graph.js'
-import { walkFilesMulti, walkMarkdownFilesMulti } from './file-walker.js'
+import { walkFilesMulti, walkMarkdownFilesMulti, walkXmlFilesMulti } from './file-walker.js'
 import type { RepoTarget } from './file-walker.js'
 import { processStructure } from './structure-processor.js'
 import { getProviderForExtension } from './languages/index.js'
@@ -12,6 +12,7 @@ import { getTreeSitterLanguage } from '../../shared/language-types.js'
 import { parseSource } from '../tree-sitter/parser-loader.js'
 import type { ParseContext } from './language-provider.js'
 import { processMarkdown } from './markdown-processor.js'
+import { processMybatisXml } from './mybatis-xml-processor.js'
 
 export interface PipelineOptions {
   verbose?: boolean
@@ -47,10 +48,11 @@ export async function runPipeline(
   if (verbose) console.log('  [1/5] Walking files...')
   const files = await walkFilesMulti(targets)
   const mdFiles = await walkMarkdownFilesMulti(targets)
+  const xmlFiles = await walkXmlFilesMulti(targets)
   if (verbose) {
     const repoList = targets.map((t) => basename(t.root)).join(', ')
     console.log(`        Repos: ${repoList}`)
-    console.log(`        Found ${files.length} source files, ${mdFiles.length} markdown files`)
+    console.log(`        Found ${files.length} source files, ${mdFiles.length} markdown files, ${xmlFiles.length} MyBatis XML files`)
   }
 
   // Phase 1: Build file/folder structure
@@ -154,6 +156,12 @@ export async function runPipeline(
     } catch {
       // Non-fatal
     }
+  }
+
+  // Phase 4B: Process MyBatis XML mapper files
+  if (xmlFiles.length > 0) {
+    if (verbose) console.log(`        Processing ${xmlFiles.length} MyBatis XML files...`)
+    processMybatisXml(graph, symbolTable, xmlFiles, { verbose })
   }
 
   // Phase 5: Process markdown files (sections, REFERENCES, DOCUMENTS)
