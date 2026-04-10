@@ -43,6 +43,19 @@ console.log(`Filter keyword: ${filter}\n`)
 
 const graph = await runPipeline(projectPath, { verbose: false })
 
+// 0. Sanity check: show sample File node paths from the graph
+const fileNodes = [...graph.nodes.values()].filter(n => n.label === 'File')
+console.log(`=== File nodes sample (total: ${fileNodes.length}) ===`)
+const sample = fileNodes.slice(0, 5)
+for (const f of sample) console.log(`  nodeId: ${f.properties?.nodeId}`)
+console.log()
+
+// 0b. Show File nodes matching filter
+const matchingFileNodes = fileNodes.filter(f => (f.properties?.nodeId ?? '').includes(filter))
+console.log(`=== File nodes matching "${filter}" (${matchingFileNodes.length} found) ===`)
+for (const f of matchingFileNodes) console.log(`  nodeId: ${f.properties?.nodeId}`)
+console.log()
+
 // 1. Show Class nodes matching filter
 const classNodes = [...graph.nodes.values()].filter(
   n => n.label === 'Class' && (n.properties?.name ?? '').includes(filter)
