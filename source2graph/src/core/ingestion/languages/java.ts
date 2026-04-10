@@ -9,6 +9,7 @@ import {
   JAVA_METHOD_QUERY,
   JAVA_FIELD_QUERY,
   JAVA_IMPORT_QUERY,
+  JAVA_TYPE_REF_QUERY,
   JAVA_EXTENDS_QUERY,
   JAVA_IMPLEMENTS_QUERY,
   JAVA_INTERFACE_EXTENDS_QUERY,
@@ -353,9 +354,14 @@ export const javaProvider: LanguageProvider = {
   },
 
   resolveImports(ctx: ParseContext, allFiles: Set<string>): void {
-    const { filePath, tree, graph } = ctx
+    const { filePath, source, tree, graph, symbolTable } = ctx
     const fileNodeId = generateNodeId(NodeLabel.File, filePath, filePath)
+    const packageName = extractPackageName(source)
 
+    // Track files already linked to avoid duplicate edges
+    const linkedFiles = new Set<string>()
+
+    // ── Explicit import statements ─────────────────────────────────────────
     const importMatches = q(JAVA_IMPORT_QUERY, tree.rootNode)
     for (const match of importMatches) {
       const importPathNode = match.captures.find((c) => c.name === 'importPath')?.node
@@ -379,7 +385,41 @@ export const javaProvider: LanguageProvider = {
               importPath,
             },
           })
+          linkedFiles.add(knownFile)
           break
+        }
+      }
+    }
+
+    // ── Implicit same-package type references ──────────────────────────────
+    // Same-package classes need no import in Java. Scan all type_identifier
+    // nodes and create IMPORTS edges for any that resolve to a same-package
+    // class/interface in a different file.
+    if (packageName) {
+      for (const match of q(JAVA_TYPE_REF_QUERY, tree.rootNode)) {
+        const typeNode = match.captures.find((c) => c.name === 'typeName')?.node
+        if (!typeNode) continue
+
+        const candidates = symbolTable.lookupByName(typeNode.text).filter(
+          (s) =>
+            (s.label === NodeLabel.Class || s.label === NodeLabel.Interface) &&
+            s.qualifiedName?.startsWith(packageName + '.') &&
+            s.filePath !== filePath &&
+            !linkedFiles.has(s.filePath),
+        )
+
+        for (const sym of candidates) {
+          linkedFiles.add(sym.filePath)
+          const targetFileNodeId = generateNodeId(NodeLabel.File, sym.filePath, sym.filePath)
+          graph.addRelationship({
+            type: RelationshipType.IMPORTS,
+            startNodeId: fileNodeId,
+            endNodeId: targetFileNodeId,
+            properties: {
+              relId: generateRelationshipId(RelationshipType.IMPORTS, fileNodeId, targetFileNodeId),
+              importPath: sym.qualifiedName,
+            },
+          })
         }
       }
     }
