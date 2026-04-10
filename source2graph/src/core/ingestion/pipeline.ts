@@ -86,7 +86,7 @@ export async function runPipeline(
     }
 
     try {
-      const source = readFileSync(file.absolutePath, 'utf-8')
+      const source = readFileSync(file.absolutePath, 'utf-8').replace(/\r/g, '')
       const langKey = (
         provider.language === 'typescriptreact' ? 'typescriptreact'
           : provider.language === 'javascriptreact' ? 'javascript'
