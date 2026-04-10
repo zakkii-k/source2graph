@@ -4,19 +4,20 @@ import { fileURLToPath } from 'url'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 // docker-compose.yml is at the project root (two levels up from src/neo4j/)
-const COMPOSE_FILE = join(__dirname, '../..', 'docker-compose.yml')
+const COMPOSE_DIR = join(__dirname, '../..')
 
-function run(cmd: string, args: string[]): { ok: boolean; output: string } {
-  const result = spawnSync(cmd, args, { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] })
+function run(cmd: string, args: string[], cwd?: string): { ok: boolean; output: string } {
+  const result = spawnSync(cmd, args, { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'], cwd })
   const output = (result.stdout ?? '') + (result.stderr ?? '')
   return { ok: result.status === 0, output }
 }
 
 function dockerCompose(args: string[]): { ok: boolean; output: string } {
   // Try `docker compose` plugin first, fall back to `docker-compose`
-  const r = run('docker', ['compose', '-f', COMPOSE_FILE, ...args])
+  // Use cwd instead of -f to avoid flag compatibility issues
+  const r = run('docker', ['compose', ...args], COMPOSE_DIR)
   if (r.ok || !r.output.includes('is not a docker command')) return r
-  return run('docker-compose', ['-f', COMPOSE_FILE, ...args])
+  return run('docker-compose', args, COMPOSE_DIR)
 }
 
 export interface ContainerStatus {
