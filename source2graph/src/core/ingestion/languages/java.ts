@@ -43,6 +43,41 @@ function extractPackageName(source: string): string {
   return match?.[1] ?? ''
 }
 
+/**
+ * Pick the best candidate from a symbol lookup result.
+ * Priority: same-package match → label-filtered match → first match.
+ */
+function pickCandidate(
+  candidates: SymbolDefinition[],
+  packageName: string,
+  preferLabel?: string,
+): SymbolDefinition | undefined {
+  if (candidates.length === 0) return undefined
+
+  // 1. Same package + preferred label
+  if (packageName && preferLabel) {
+    const hit = candidates.find(
+      (s) => s.label === preferLabel && s.qualifiedName?.startsWith(packageName + '.'),
+    )
+    if (hit) return hit
+  }
+
+  // 2. Same package (any label)
+  if (packageName) {
+    const hit = candidates.find((s) => s.qualifiedName?.startsWith(packageName + '.'))
+    if (hit) return hit
+  }
+
+  // 3. Preferred label (any package)
+  if (preferLabel) {
+    const hit = candidates.find((s) => s.label === preferLabel)
+    if (hit) return hit
+  }
+
+  // 4. First candidate
+  return candidates[0]
+}
+
 /** True if the class/interface name looks like a MyBatis Mapper. */
 function isMapperName(name: string, modifiersText: string): boolean {
   return /[Mm]apper$|[Dd]ao$/.test(name) || modifiersText.includes('@Mapper')
@@ -363,8 +398,11 @@ export const javaProvider: LanguageProvider = {
       const className = packageName ? `${packageName}.${classNameNode.text}` : classNameNode.text
       const childId = generateNodeId(NodeLabel.Class, filePath, className)
 
-      const superCandidates = symbolTable.lookupByName(superNameNode.text)
-      const superSym = superCandidates.find((s) => s.label === NodeLabel.Class) ?? superCandidates[0]
+      const superSym = pickCandidate(
+        symbolTable.lookupByName(superNameNode.text),
+        packageName,
+        NodeLabel.Class,
+      )
       if (!superSym) continue
 
       graph.addRelationship({
@@ -384,8 +422,11 @@ export const javaProvider: LanguageProvider = {
       const className = packageName ? `${packageName}.${classNameNode.text}` : classNameNode.text
       const childId = generateNodeId(NodeLabel.Class, filePath, className)
 
-      const ifaceCandidates = symbolTable.lookupByName(ifaceNameNode.text)
-      const ifaceSym = ifaceCandidates.find((s) => s.label === NodeLabel.Interface) ?? ifaceCandidates[0]
+      const ifaceSym = pickCandidate(
+        symbolTable.lookupByName(ifaceNameNode.text),
+        packageName,
+        NodeLabel.Interface,
+      )
       if (!ifaceSym) continue
 
       graph.addRelationship({
@@ -405,8 +446,11 @@ export const javaProvider: LanguageProvider = {
       const ifaceName = packageName ? `${packageName}.${ifaceNameNode.text}` : ifaceNameNode.text
       const childId = generateNodeId(NodeLabel.Interface, filePath, ifaceName)
 
-      const superCandidates = symbolTable.lookupByName(superIfaceNameNode.text)
-      const superSym = superCandidates.find((s) => s.label === NodeLabel.Interface) ?? superCandidates[0]
+      const superSym = pickCandidate(
+        symbolTable.lookupByName(superIfaceNameNode.text),
+        packageName,
+        NodeLabel.Interface,
+      )
       if (!superSym) continue
 
       graph.addRelationship({
@@ -419,7 +463,8 @@ export const javaProvider: LanguageProvider = {
   },
 
   resolveCalls(ctx: ParseContext): void {
-    const { filePath, tree, graph, symbolTable } = ctx
+    const { filePath, source, tree, graph, symbolTable } = ctx
+    const packageName = extractPackageName(source)
 
     // Find the enclosing method for each call site
     for (const match of q(JAVA_CALL_QUERY, tree.rootNode)) {
@@ -432,21 +477,31 @@ export const javaProvider: LanguageProvider = {
       if (!callerSym || callerSym.label !== NodeLabel.Method) continue
 
       const calleeCandidates = symbolTable.lookupByName(methodNameNode.text)
-      for (const callee of calleeCandidates) {
-        if (callee.nodeId === callerSym.nodeId) continue
-        const confidence = callee.filePath === filePath ? 0.9 : 0.7
+        .filter((c) => c.nodeId !== callerSym.nodeId)
+      if (calleeCandidates.length === 0) continue
 
-        graph.addRelationship({
-          type: RelationshipType.CALLS,
-          startNodeId: callerSym.nodeId,
-          endNodeId: callee.nodeId,
-          properties: {
-            relId: generateRelationshipId(RelationshipType.CALLS, callerSym.nodeId, callee.nodeId),
-            confidence,
-          },
-        })
-        break // Take first match only
-      }
+      // Prefer: same file > same package > other
+      const callee =
+        calleeCandidates.find((c) => c.filePath === filePath) ??
+        (packageName
+          ? calleeCandidates.find((c) => c.qualifiedName?.startsWith(packageName + '.'))
+          : undefined) ??
+        calleeCandidates[0]
+
+      const confidence =
+        callee.filePath === filePath ? 0.9
+        : (packageName && callee.qualifiedName?.startsWith(packageName + '.')) ? 0.8
+        : 0.7
+
+      graph.addRelationship({
+        type: RelationshipType.CALLS,
+        startNodeId: callerSym.nodeId,
+        endNodeId: callee.nodeId,
+        properties: {
+          relId: generateRelationshipId(RelationshipType.CALLS, callerSym.nodeId, callee.nodeId),
+          confidence,
+        },
+      })
     }
   },
 }
