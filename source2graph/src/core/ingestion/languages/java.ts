@@ -409,8 +409,17 @@ export const javaProvider: LanguageProvider = {
         )
 
         for (const sym of candidates) {
+          // sym.filePath may be just a filename without the full relative path
+          // (e.g. "SomeDto.java" instead of "src/main/java/.../SomeDto.java").
+          // Use qualifiedName to find the correct path from allFiles.
+          const expectedSuffix = sym.qualifiedName.replace(/\./g, '/') + '.java'
+          const resolvedPath = allFiles.has(sym.filePath)
+            ? sym.filePath
+            : ([...allFiles].find((p) => p.endsWith('/' + expectedSuffix) || p === expectedSuffix) ?? sym.filePath)
+
           linkedFiles.add(sym.filePath)
-          const targetFileNodeId = generateNodeId(NodeLabel.File, sym.filePath, sym.filePath)
+          linkedFiles.add(resolvedPath)
+          const targetFileNodeId = generateNodeId(NodeLabel.File, resolvedPath, resolvedPath)
           graph.addRelationship({
             type: RelationshipType.IMPORTS,
             startNodeId: fileNodeId,
